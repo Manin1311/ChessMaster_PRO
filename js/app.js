@@ -1185,12 +1185,7 @@ function init() {
   showLandingPage();
 }
 
-// Bootstrap when DOM ready
-if (document.readyState === 'loading') {
-  document.addEventListener('DOMContentLoaded', init);
-} else {
-  init();
-}
+// Bootstrap is at the END of this file (after Auth and landing page are defined)
 
 // ============================================================
 // AUTH SYSTEM (localStorage-based)
@@ -1476,18 +1471,6 @@ function hideAuthModal(type) {
   // Clear errors
   const errId = type === 'signin' ? 'si-error' : 'reg-error';
   if ($(errId)) $(errId).textContent = '';
-}
-  } else {
-    $('landing-page').style.display = 'flex';
-  }
-
-  // Mode card click handlers
-  document.querySelectorAll('.lp-mode-card').forEach(card => {
-    card.addEventListener('click', () => {
-      const mode = card.dataset.mode;
-      hideLandingPage(mode);
-    });
-  });
 }
 
 function hideLandingPage(mode) {
@@ -1942,4 +1925,14 @@ function wireOnlineMode() {
 Object.defineProperty(Multiplayer, '_socketId', {
   get() { return this.isConnected && window._mpSocket ? window._mpSocket.id : null; }
 });
+
+// ============================================================
+// BOOTSTRAP — must be last so Auth + showLandingPage are defined
+// ============================================================
+if (document.readyState === 'loading') {
+  document.addEventListener('DOMContentLoaded', init);
+} else {
+  init();
+}
+
 
