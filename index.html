@@ -1,0 +1,403 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>ChessMaster Pro — Professional Chess</title>
+  <meta name="description" content="Professional chess app with voice commands, time controls, AI opponent and advanced features." />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Outfit:wght@400;600;700;800;900&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="css/main.css" />
+  <link rel="stylesheet" href="css/board.css" />
+  <link rel="stylesheet" href="css/modals.css" />
+</head>
+<body>
+
+  <!-- ===== HEADER ===== -->
+  <header class="app-header">
+    <div class="header-brand">
+      <div class="brand-logo">♟</div>
+      <div class="brand-text">
+        <span class="brand-name">ChessMaster</span>
+        <span class="brand-pro">Pro</span>
+      </div>
+    </div>
+    <nav class="header-nav">
+      <button class="nav-btn" id="btn-new-game-header">⊕ New Game</button>
+      <button class="nav-btn ghost" id="btn-settings-header">⚙ Settings</button>
+    </nav>
+  </header>
+
+  <!-- ===== MAIN LAYOUT ===== -->
+  <main class="game-container">
+
+    <!-- LEFT PANEL -->
+    <aside class="side-panel left-panel">
+
+      <div class="player-card" id="card-black">
+        <div class="player-avatar av-black">♚</div>
+        <div class="player-meta">
+          <div class="player-name" id="name-black">Black</div>
+          <div class="player-elo">1500 Elo</div>
+        </div>
+        <div class="captured-row" id="cap-black"></div>
+      </div>
+
+      <div class="clock-box" id="clock-black">
+        <div class="clock-time" id="time-black">10:00</div>
+        <div class="clock-label">BLACK</div>
+      </div>
+
+      <div class="history-panel">
+        <div class="panel-heading">
+          <span class="ph-icon">☰</span> Move History
+        </div>
+        <div class="move-list" id="move-list"></div>
+        <div class="move-nav">
+          <button class="mnav-btn" id="nav-first">⏮</button>
+          <button class="mnav-btn" id="nav-prev">◀</button>
+          <button class="mnav-btn" id="nav-next">▶</button>
+          <button class="mnav-btn" id="nav-last">⏭</button>
+        </div>
+      </div>
+
+      <div class="clock-box active" id="clock-white">
+        <div class="clock-time" id="time-white">10:00</div>
+        <div class="clock-label">WHITE</div>
+      </div>
+
+      <div class="player-card" id="card-white">
+        <div class="player-avatar av-white">♔</div>
+        <div class="player-meta">
+          <div class="player-name" id="name-white">White</div>
+          <div class="player-elo">1500 Elo</div>
+        </div>
+        <div class="captured-row" id="cap-white"></div>
+      </div>
+
+    </aside>
+
+    <!-- BOARD SECTION -->
+    <section class="board-section">
+      <div class="status-bar" id="status-bar">
+        <span class="status-dot" id="status-dot"></span>
+        <span id="status-text">White to move</span>
+      </div>
+
+      <div class="board-wrap">
+        <div class="rank-labels" id="rank-labels"></div>
+        <div id="chessboard" class="chessboard"></div>
+      </div>
+      <div class="file-labels" id="file-labels"></div>
+
+      <div class="board-controls">
+        <button class="bctrl danger"  id="btn-resign">🏳 Resign</button>
+        <button class="bctrl warning" id="btn-draw">🤝 Draw</button>
+        <button class="bctrl info"    id="btn-flip">🔄 Flip</button>
+        <button class="bctrl subtle"  id="btn-undo">↩ Undo</button>
+        <button class="bctrl subtle"  id="btn-copy-pgn">📋 PGN</button>
+      </div>
+    </section>
+
+    <!-- RIGHT PANEL -->
+    <aside class="side-panel right-panel">
+
+      <!-- Game Mode -->
+      <div class="rpanel-card">
+        <div class="panel-heading"><span class="ph-icon">🎮</span> Game Mode</div>
+        <div class="mode-grid">
+          <button class="mode-btn active" data-mode="computer">🤖<br><small>vs CPU</small></button>
+          <button class="mode-btn" data-mode="friend">👥<br><small>Pass &amp; Play</small></button>
+          <button class="mode-btn" data-mode="analysis">🔍<br><small>Analysis</small></button>
+          <button class="mode-btn" data-mode="online">🌐<br><small>Online</small></button>
+        </div>
+      </div>
+
+      <!-- Time Controls -->
+      <div class="rpanel-card">
+        <div class="panel-heading"><span class="ph-icon">⏱</span> Time Control</div>
+        <div class="time-grid">
+          <button class="time-btn" data-min="1"  data-inc="0">1+0<br><small>Bullet</small></button>
+          <button class="time-btn" data-min="2"  data-inc="1">2+1<br><small>Bullet</small></button>
+          <button class="time-btn" data-min="3"  data-inc="0">3+0<br><small>Blitz</small></button>
+          <button class="time-btn active" data-min="5" data-inc="0">5+0<br><small>Blitz</small></button>
+          <button class="time-btn" data-min="10" data-inc="0">10+0<br><small>Rapid</small></button>
+          <button class="time-btn" data-min="15" data-inc="10">15+10<br><small>Rapid</small></button>
+          <button class="time-btn" data-min="30" data-inc="0">30+0<br><small>Classic</small></button>
+          <button class="time-btn" data-min="0"  data-inc="0" id="custom-time-btn">⚙<br><small>Custom</small></button>
+        </div>
+        <div class="custom-inputs" id="custom-inputs" style="display:none">
+          <div class="ci-row">
+            <label>Minutes</label>
+            <input type="number" id="ci-min" min="1" max="90" value="10" />
+          </div>
+          <div class="ci-row">
+            <label>Increment</label>
+            <input type="number" id="ci-inc" min="0" max="60" value="0" />
+          </div>
+          <button class="apply-btn" id="ci-apply">Apply</button>
+        </div>
+      </div>
+
+      <!-- AI Difficulty -->
+      <div class="rpanel-card" id="ai-card">
+        <div class="panel-heading"><span class="ph-icon">🤖</span> AI Difficulty</div>
+        <input type="range" id="ai-level" min="1" max="5" value="2" class="diff-slider" />
+        <div class="diff-row">
+          <span>Beginner</span>
+          <span id="diff-label" class="diff-val">Easy</span>
+          <span>Master</span>
+        </div>
+      </div>
+
+      <!-- Voice Commands -->
+      <div class="rpanel-card">
+        <div class="panel-heading"><span class="ph-icon">🎤</span> Voice Commands</div>
+        <button class="voice-big-btn" id="btn-voice">
+          <div class="voice-mic" id="voice-mic">🎤</div>
+          <span id="voice-label">Click to Speak</span>
+        </button>
+        <div class="voice-heard" id="voice-heard"></div>
+        <div class="voice-hint">Try: <em>"queen to h6"</em>, <em>"castle kingside"</em>, <em>"resign"</em></div>
+      </div>
+
+    </aside>
+  </main>
+
+  <!-- ===== MODALS ===== -->
+
+  <!-- Promotion -->
+  <div class="overlay" id="modal-promo">
+    <div class="modal">
+      <h2>Pawn Promotion</h2>
+      <p>Choose a piece</p>
+      <div class="promo-row" id="promo-row"></div>
+    </div>
+  </div>
+
+  <!-- Game Over -->
+  <div class="overlay" id="modal-gameover">
+    <div class="modal">
+      <div class="go-icon" id="go-icon">🏆</div>
+      <h2 id="go-title">Game Over</h2>
+      <p id="go-sub">By Checkmate</p>
+      <div class="go-stats" id="go-stats"></div>
+      <div class="modal-btns">
+        <button class="mbtn primary" id="btn-rematch">🔄 Rematch</button>
+        <button class="mbtn ghost"   id="btn-newgame-go">New Game</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Draw Offer -->
+  <div class="overlay" id="modal-draw">
+    <div class="modal">
+      <div class="go-icon">🤝</div>
+      <h2>Draw Offered</h2>
+      <p>Do you accept the draw?</p>
+      <div class="modal-btns">
+        <button class="mbtn primary"  id="btn-accept-draw">Accept</button>
+        <button class="mbtn danger"   id="btn-decline-draw">Decline</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- New Game -->
+  <div class="overlay" id="modal-newgame">
+    <div class="modal">
+      <h2>New Game</h2>
+      <p>Choose your colour</p>
+      <div class="color-row">
+        <button class="col-btn" id="ng-white">♔<br>White</button>
+        <button class="col-btn" id="ng-random">🎲<br>Random</button>
+        <button class="col-btn" id="ng-black">♚<br>Black</button>
+      </div>
+      <div class="modal-btns">
+        <button class="mbtn ghost" id="btn-cancel-ng">Cancel</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Settings -->
+  <div class="overlay" id="modal-settings">
+    <div class="modal modal-wide">
+      <div class="modal-hdr">
+        <h2>Settings</h2>
+        <button class="close-btn" id="close-settings">✕</button>
+      </div>
+
+      <div class="settings-body">
+        <div class="sset">
+          <h3>Board Theme</h3>
+          <div class="theme-row">
+            <button class="theme-swatch active" data-theme="classic" title="Classic">
+              <div class="sw-grid">
+                <div style="background:#f0d9b5"></div><div style="background:#b58863"></div>
+                <div style="background:#b58863"></div><div style="background:#f0d9b5"></div>
+              </div>
+              <span>Classic</span>
+            </button>
+            <button class="theme-swatch" data-theme="green" title="Lichess">
+              <div class="sw-grid">
+                <div style="background:#eeeed2"></div><div style="background:#769656"></div>
+                <div style="background:#769656"></div><div style="background:#eeeed2"></div>
+              </div>
+              <span>Lichess</span>
+            </button>
+            <button class="theme-swatch" data-theme="blue" title="Ocean">
+              <div class="sw-grid">
+                <div style="background:#dee3e6"></div><div style="background:#8ca2ad"></div>
+                <div style="background:#8ca2ad"></div><div style="background:#dee3e6"></div>
+              </div>
+              <span>Ocean</span>
+            </button>
+            <button class="theme-swatch" data-theme="purple" title="Amethyst">
+              <div class="sw-grid">
+                <div style="background:#e8d5f0"></div><div style="background:#8b5cf6"></div>
+                <div style="background:#8b5cf6"></div><div style="background:#e8d5f0"></div>
+              </div>
+              <span>Amethyst</span>
+            </button>
+            <button class="theme-swatch" data-theme="dark" title="Night">
+              <div class="sw-grid">
+                <div style="background:#4a4a6a"></div><div style="background:#1a1a2e"></div>
+                <div style="background:#1a1a2e"></div><div style="background:#4a4a6a"></div>
+              </div>
+              <span>Night</span>
+            </button>
+          </div>
+        </div>
+
+        <div class="sset">
+          <h3>Options</h3>
+          <div class="toggle-list">
+            <label class="trow"><span>Show Legal Moves</span><input type="checkbox" id="opt-hints" checked /><span class="tslider"></span></label>
+            <label class="trow"><span>Auto-Queen Promotion</span><input type="checkbox" id="opt-autoqueen" /><span class="tslider"></span></label>
+            <label class="trow"><span>Sound Effects</span><input type="checkbox" id="opt-sound" checked /><span class="tslider"></span></label>
+            <label class="trow"><span>Animations</span><input type="checkbox" id="opt-anim" checked /><span class="tslider"></span></label>
+            <label class="trow"><span>Show Coordinates</span><input type="checkbox" id="opt-coords" checked /><span class="tslider"></span></label>
+          </div>
+        </div>
+
+        <div class="sset">
+          <h3>Player Names</h3>
+          <div class="name-inputs">
+            <div class="ci-row"><label>White</label><input type="text" id="inp-white-name" value="White" /></div>
+            <div class="ci-row"><label>Black</label><input type="text" id="inp-black-name" value="Black" /></div>
+            <button class="apply-btn" id="btn-save-names">Save</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="modal-btns">
+        <button class="mbtn primary" id="btn-close-settings">Done</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Challenge Friend (Online) Modal -->
+  <div class="overlay" id="modal-online">
+    <div class="modal">
+      <div class="modal-hdr">
+        <h2>🌐 Play Online</h2>
+        <button class="close-btn" id="close-online">✕</button>
+      </div>
+
+      <div class="online-tabs">
+        <button class="otab active" id="otab-create">Create Room</button>
+        <button class="otab" id="otab-join">Join Room</button>
+      </div>
+
+      <!-- Create Room -->
+      <div class="otab-panel" id="opanel-create">
+        <div class="ci-row"><label>Your Name</label><input type="text" id="online-name-create" placeholder="Your name" maxlength="20" /></div>
+        <div class="ci-row"><label>Play as</label>
+          <select id="online-color" class="color-select">
+            <option value="w">White ♔</option>
+            <option value="b">Black ♚</option>
+            <option value="random">Random 🎲</option>
+          </select>
+        </div>
+        <button class="apply-btn" id="btn-create-room">Create Room →</button>
+      </div>
+
+      <!-- Join Room -->
+      <div class="otab-panel" id="opanel-join" style="display:none">
+        <div class="ci-row"><label>Your Name</label><input type="text" id="online-name-join" placeholder="Your name" maxlength="20" /></div>
+        <div class="ci-row"><label>Room Code</label><input type="text" id="room-code-input" placeholder="ABC123" maxlength="6" style="text-transform:uppercase;letter-spacing:0.2em" /></div>
+        <button class="apply-btn" id="btn-join-room">Join Room →</button>
+      </div>
+
+      <!-- Waiting / Room Created state -->
+      <div class="room-waiting" id="room-waiting" style="display:none">
+        <div class="room-code-display">
+          <div class="rcd-label">Share this code with your friend</div>
+          <div class="rcd-code" id="rcd-code">------</div>
+          <button class="copy-link-btn" id="btn-copy-code">📋 Copy Code</button>
+          <button class="copy-link-btn" id="btn-copy-link">🔗 Copy Link</button>
+        </div>
+        <div class="waiting-anim">
+          <div class="waiting-dot"></div><div class="waiting-dot"></div><div class="waiting-dot"></div>
+        </div>
+        <div class="waiting-text">Waiting for opponent to join…</div>
+      </div>
+
+      <!-- Connection status -->
+      <div class="online-status" id="online-status"></div>
+    </div>
+  </div>
+
+  <!-- Draw Offer from Opponent -->
+  <div class="overlay" id="modal-online-draw">
+    <div class="modal">
+      <div class="go-icon">🤝</div>
+      <h2>Draw Offered</h2>
+      <p id="draw-offered-by">Your opponent offers a draw.</p>
+      <div class="modal-btns">
+        <button class="mbtn primary" id="btn-online-accept-draw">Accept</button>
+        <button class="mbtn danger"  id="btn-online-decline-draw">Decline</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Takeback Request -->
+  <div class="overlay" id="modal-takeback">
+    <div class="modal">
+      <div class="go-icon">↩</div>
+      <h2>Takeback Request</h2>
+      <p id="takeback-from">Your opponent wants to undo their last move.</p>
+      <div class="modal-btns">
+        <button class="mbtn primary" id="btn-accept-takeback">Allow</button>
+        <button class="mbtn danger"  id="btn-decline-takeback">Deny</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Chat Panel (slide-in from right) -->
+  <div class="chat-panel" id="chat-panel">
+    <div class="chat-header">
+      <span>💬 Game Chat</span>
+      <button class="close-btn" id="close-chat">✕</button>
+    </div>
+    <div class="chat-messages" id="chat-messages"></div>
+    <div class="chat-input-row">
+      <input type="text" id="chat-input" placeholder="Say something…" maxlength="200" />
+      <button id="btn-send-chat">Send</button>
+    </div>
+  </div>
+  <button class="chat-toggle" id="btn-chat-toggle" style="display:none">💬 <span id="chat-badge"></span></button>
+
+  <!-- Toast Container -->
+  <div id="toast-container"></div>
+
+  <!-- Scripts -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/chess.js/0.10.3/chess.min.js"></script>
+  <script src="js/sounds.js"></script>
+  <script src="js/ai.js"></script>
+  <script src="js/voice.js"></script>
+  <script src="js/clock.js"></script>
+  <script src="js/multiplayer.js"></script>
+  <script src="js/app.js"></script>
+</body>
+</html>

@@ -1,0 +1,91 @@
+/* ============================================
+   SOUNDS.JS — Web Audio API Sound Engine
+   ============================================ */
+
+/* ---- Main Container ---- */
+.placeholder-container {
+   display: flex;
+   flex-direction: column;
+   align-items: center;
+   justify-content: center;
+   height: 100%;
+   width: 100%;
+   background-color: var(--bg-card);
+   border-radius: var(--r-sm);
+   box-shadow: var(--shadow-lg);
+   padding: var(--s-lg);
+   text-align: center;
+   color: var(--text-main);
+   font-family: var(--font-main);
+   font-size: var(--fs-md);
+   gap: var(--s-md);
+   opacity: 0.8;
+   transition: opacity 0.3s ease;
+}
+
+/* ---- Icon ---- */
+.placeholder-icon {
+   font-size: 4rem;
+   margin-bottom: var(--s-md);
+   animation: pulse 2s ease-in-out infinite;
+}
+
+@keyframes pulse {
+
+   0%,
+   100% {
+      transform: scale(1);
+   }
+
+   50% {
+      transform: scale(1.1);
+   }
+}
+
+/* ---- Text ---- */
+.placeholder-text {
+   font-size: var(--fs-lg);
+   font-weight: 700;
+   margin-bottom: var(--s-sm);
+}
+
+.placeholder-subtext {
+   font-size: var(--fs-sm);
+   color: var(--text-secondary);
+   max-width: 400px;
+   line-height: 1.5;
+}
+
+/* ---- Buttons ---- */
+.placeholder-btn {
+   padding: var(--s-sm) var(--s-md);
+   border-radius: var(--r-sm);
+   font-size: var(--fs-sm);
+   font-weight: 600;
+   cursor: pointer;
+   transition: all 0.3s ease;
+   border: none;
+   background: var(--accent-color);
+   color: #fff;
+}
+
+.placeholder-btn:hover {
+   transform: translateY(-2px);
+   box-shadow: 0 4px 12px var(--accent-color);
+}
+
+/* ---- Responsive ---- */
+@media (max-width: 768px) {
+   .placeholder-container {
+      padding: var(--s-md);
+      font-size: var(--fs-sm);
+   }
+
+   .placeholder-icon {
+      font-size: 3rem;
+   }
+
+   .placeholder-text {
+      font-size: var(--fs-md);
+   }
+}
