@@ -913,6 +913,10 @@ function handleVoiceStatus(status) {
 // ============================================================
 function doResign() {
   if (State.gameOver) return;
+  if (State.mode === 'online') {
+    Multiplayer.sendResign();
+    return;
+  }
   const resigner = State.chess.turn() === 'w' ? State.names.w : State.names.b;
   const winner   = State.chess.turn() === 'w' ? State.names.b : State.names.w;
   State.gameOver = true;
@@ -928,6 +932,11 @@ function doResign() {
 
 function doOfferDraw() {
   if (State.gameOver) return;
+  if (State.mode === 'online') {
+    Multiplayer.sendDrawOffer();
+    toast('Draw offer sent...', 'info');
+    return;
+  }
   if (State.mode === 'friend') {
     openModal('modal-draw');
   } else {
@@ -1045,7 +1054,6 @@ function wireEvents() {
     State.flipped = !State.flipped;
     renderBoard();
   });
-  $('btn-undo').addEventListener('click', doUndo);
   $('btn-copy-pgn').addEventListener('click', () => {
     const pgn = State.chess.pgn();
     navigator.clipboard.writeText(pgn).then(() => toast('PGN copied!', 'success', 2000));
@@ -1077,6 +1085,7 @@ function wireEvents() {
       document.querySelectorAll('.mode-btn').forEach(b => b.classList.remove('active'));
       btn.classList.add('active');
       State.mode = btn.dataset.mode;
+      document.body.dataset.mode = State.mode;
       $('ai-card').style.display = State.mode === 'computer' ? '' : 'none';
     });
   });
@@ -1542,6 +1551,7 @@ function hideLandingPage(mode) {
 
   // Set the selected mode
   State.mode = mode;
+  document.body.dataset.mode = mode;
   document.querySelectorAll('.mode-btn').forEach(b => {
     b.classList.toggle('active', b.dataset.mode === mode);
   });
@@ -1792,6 +1802,11 @@ function wireOnlineMode() {
   $('btn-create-room').addEventListener('click', () => {
     const name  = $('online-name-create').value.trim() || 'Player';
     const color = $('online-color').value;
+    const timeVal = $('online-time').value; // e.g., "5+0"
+    const [tMin, tInc] = timeVal.split('+').map(Number);
+    State.timeMin = tMin;
+    State.timeInc = tInc;
+
     State.onlineName  = name;
     State.onlineColor = color === 'random' ? (Math.random() < 0.5 ? 'w' : 'b') : color;
     setOnlineStatus('Creating room…', 'info');

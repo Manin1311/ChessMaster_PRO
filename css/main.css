@@ -677,6 +677,13 @@ body::before {
   to   { transform: translateX(0);    opacity: 1; }
 }
 
+/* Hide clutter in Online Mode */
+body[data-mode="online"] #rpanel-mode,
+body[data-mode="online"] #rpanel-time,
+body[data-mode="online"] #ai-card {
+  display: none !important;
+}
+
 /* ============================================
    BOARD THEMES
    ============================================ */
