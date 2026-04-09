@@ -19,6 +19,20 @@
   user-select: none;
 }
 
+/* On single-column mobile layout, use available width */
+@media (max-width: 840px) {
+  .chessboard {
+    width:  min(90vw, 520px);
+    height: min(90vw, 520px);
+  }
+}
+@media (max-width: 480px) {
+  .chessboard {
+    width:  min(96vw, 420px);
+    height: min(96vw, 420px);
+  }
+}
+
 /* ---- Squares ---- */
 .sq {
   position: relative;

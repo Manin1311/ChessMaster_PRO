@@ -1,14 +1,16 @@
 /**
  * CHESSMASTER PRO — VOICE COMMAND ENGINE
- * Uses Web Speech API to accept spoken chess moves
+ * Supports continuous always-on mode so players speak moves hands-free.
  */
 
 const VoiceEngine = (() => {
 
-  let recognition = null;
-  let isListening = false;
-  let onResultCb = null;
-  let onStatusCb = null;
+  let recognition  = null;
+  let isListening  = false;
+  let alwaysOn     = false;   // hands-free mode
+  let restartTimer = null;
+  let onResultCb   = null;
+  let onStatusCb   = null;
 
   // ---- Piece name → SAN letter ----
   const PIECE_MAP = {
@@ -29,14 +31,9 @@ const VoiceEngine = (() => {
     return FILE_ALIASES[word] || null;
   }
 
-  /**
-   * Parse a spoken sentence into a chess command object.
-   * Returns: { action } | { move: '<SAN or {from,to}>' } | null
-   */
   function parseText(text) {
     text = text.toLowerCase().trim().replace(/[^a-z0-9 ]/g, '');
 
-    // --- Direct actions ---
     if (/\bresign\b/.test(text))                     return { action: 'resign' };
     if (/\b(offer\s*)?draw\b/.test(text))            return { action: 'draw' };
     if (/\bnew\s*game\b/.test(text))                 return { action: 'newGame' };
@@ -44,13 +41,11 @@ const VoiceEngine = (() => {
     if (/\bundo\b|\btake\s*back\b/.test(text))       return { action: 'undo' };
     if (/\baccept\b/.test(text))                     return { action: 'acceptDraw' };
 
-    // --- Castling ---
     if (/\bcastle\s*king\s*side\b|\bking\s*side\s*castle\b|\bshort\s*castle\b|\bo[\s-]o(?!\s*o)\b/.test(text))
       return { move: 'O-O' };
     if (/\bcastle\s*queen\s*side\b|\bqueen\s*side\s*castle\b|\blong\s*castle\b|\bo[\s-]o[\s-]o\b/.test(text))
       return { move: 'O-O-O' };
 
-    // --- Extract piece ---
     let piece = '';
     let workText = text;
     for (const [name, letter] of Object.entries(PIECE_MAP)) {
@@ -61,32 +56,25 @@ const VoiceEngine = (() => {
       }
     }
 
-    // Remove filler words
     workText = workText.replace(/\b(to|from|at|takes|captures|goes|move|on|the|a)\b/g, ' ').trim();
 
-    // --- Extract squares: look for file+rank pairs ---
-    // First add file aliases
     const words = workText.split(/\s+/);
     let squares = [];
 
-    // Try to find squares directly (e.g., e4, h6)
     const directSquare = /\b([a-h])([1-8])\b/g;
     let m;
-    while ((m = directSquare.exec(workText)) !== null) {
-      squares.push(m[1] + m[2]);
-    }
+    while ((m = directSquare.exec(workText)) !== null) squares.push(m[1] + m[2]);
 
-    // If not enough, try word-pair like "echo four" → e4
     if (squares.length === 0) {
-      const ranks = { 'one': 1, 'two': 2, 'three': 3, 'four': 4, 'five': 5, 'six': 6, 'seven': 7, 'eight': 8,
-                      '1': 1, '2': 2, '3': 3, '4': 4, '5': 5, '6': 6, '7': 7, '8': 8 };
-      // Try consecutive word pairs
+      const ranks = {
+        'one':1,'two':2,'three':3,'four':4,'five':5,'six':6,'seven':7,'eight':8,
+        '1':1,'2':2,'3':3,'4':4,'5':5,'6':6,'7':7,'8':8
+      };
       for (let i = 0; i < words.length - 1; i++) {
         const file = normaliseFile(words[i]);
         const rank = ranks[words[i + 1]];
         if (file && rank) squares.push(file + rank);
       }
-      // Also handle rank right after file word in same token like "echo4"
       for (const w of words) {
         const fPart = normaliseFile(w.replace(/\d+$/, ''));
         const rPart = parseInt(w.match(/\d+$/)?.[0]);
@@ -95,16 +83,9 @@ const VoiceEngine = (() => {
     }
 
     if (squares.length === 0) return null;
-
-    const toSq = squares[squares.length - 1];
+    const toSq   = squares[squares.length - 1];
     const fromSq = squares.length >= 2 ? squares[0] : null;
-
-    // Build result
-    if (fromSq) {
-      return { move: { from: fromSq, to: toSq } };
-    }
-
-    // Build SAN-style hint (app.js will try it against legal moves)
+    if (fromSq) return { move: { from: fromSq, to: toSq } };
     return { move: piece + toSq, piece, toSq };
   }
 
@@ -112,49 +93,70 @@ const VoiceEngine = (() => {
     return ('SpeechRecognition' in window || 'webkitSpeechRecognition' in window);
   }
 
+  // ---- Debounced restart helper ----
+  function scheduleRestart(delay = 150) {
+    clearTimeout(restartTimer);
+    restartTimer = setTimeout(() => {
+      if (alwaysOn && !isListening) {
+        try { recognition.start(); } catch(e) { /* already started */ }
+      }
+    }, delay);
+  }
+
   function init() {
     if (!isSupported()) return false;
     const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
     recognition = new SR();
-    recognition.continuous = false;
+    recognition.continuous    = false;  // we manage restarts ourselves
     recognition.interimResults = true;
-    recognition.lang = 'en-US';
+    recognition.lang           = 'en-US';
     recognition.maxAlternatives = 3;
 
     recognition.onstart = () => {
       isListening = true;
-      if (onStatusCb) onStatusCb('listening');
+      if (onStatusCb) onStatusCb(alwaysOn ? 'always-on' : 'listening');
     };
 
     recognition.onend = () => {
       isListening = false;
-      if (onStatusCb) onStatusCb('idle');
+      if (alwaysOn) {
+        scheduleRestart(120);
+        // Keep status as "listening" visually — just a brief gap
+        if (onStatusCb) onStatusCb('always-on');
+      } else {
+        if (onStatusCb) onStatusCb('idle');
+      }
     };
 
     recognition.onerror = (e) => {
       isListening = false;
-      if (onStatusCb) onStatusCb('error:' + e.error);
+      if (alwaysOn && (e.error === 'no-speech' || e.error === 'aborted' || e.error === 'network')) {
+        scheduleRestart(300);
+        return;
+      }
+      if (!alwaysOn && onStatusCb) onStatusCb('error:' + e.error);
     };
 
     recognition.onresult = (e) => {
       let transcript = '';
-      let isFinal = false;
+      let isFinal    = false;
+
       for (let i = e.resultIndex; i < e.results.length; i++) {
         transcript = e.results[i][0].transcript;
         if (e.results[i].isFinal) { isFinal = true; break; }
       }
 
-      // Also check alternatives for finals
+      // Try alternatives to find a parseable result
       if (!isFinal && e.results.length > 0 && e.results[e.results.length - 1].isFinal) {
-        const result = e.results[e.results.length - 1];
-        for (let j = 0; j < result.length; j++) {
-          const alt = result[j].transcript;
-          const parsed = parseText(alt);
-          if (parsed) { transcript = alt; isFinal = true; break; }
+        const last = e.results[e.results.length - 1];
+        for (let j = 0; j < last.length; j++) {
+          const alt = last[j].transcript;
+          if (parseText(alt)) { transcript = alt; isFinal = true; break; }
         }
       }
 
       if (onStatusCb) onStatusCb('heard:' + transcript);
+
       if (isFinal && onResultCb) {
         const parsed = parseText(transcript);
         onResultCb(transcript, parsed);
@@ -164,22 +166,43 @@ const VoiceEngine = (() => {
     return true;
   }
 
+  // ---- Single shot start ----
   function start() {
-    if (!recognition) {
-      if (!init()) return false;
-    }
+    if (!recognition && !init()) return false;
     if (isListening) return true;
     try { recognition.start(); return true; }
     catch (e) { return false; }
   }
 
+  // ---- Stop everything ----
   function stop() {
-    if (recognition && isListening) recognition.stop();
+    alwaysOn = false;
+    clearTimeout(restartTimer);
+    if (recognition && isListening) {
+      try { recognition.stop(); } catch(e) {}
+    }
+    isListening = false;
+    if (onStatusCb) onStatusCb('idle');
   }
 
+  // ---- Single utterance toggle (old behaviour) ----
   function toggle() {
-    if (isListening) { stop(); return false; }
-    else { return start(); }
+    if (alwaysOn || isListening) { stop(); return false; }
+    return start();
+  }
+
+  // ---- Hands-free continuous toggle ----
+  function toggleAlwaysOn() {
+    if (alwaysOn) {
+      stop();
+      return false;
+    }
+    if (!recognition && !init()) return false;
+    alwaysOn = true;
+    if (!isListening) {
+      try { recognition.start(); } catch(e) {}
+    }
+    return true;
   }
 
   return {
@@ -188,9 +211,11 @@ const VoiceEngine = (() => {
     start,
     stop,
     toggle,
+    toggleAlwaysOn,
     parseText,
     onResult(cb) { onResultCb = cb; },
     onStatus(cb) { onStatusCb = cb; },
-    get listening() { return isListening; }
+    get listening()  { return isListening; },
+    get isAlwaysOn() { return alwaysOn;    }
   };
 })();

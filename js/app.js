@@ -779,6 +779,22 @@ function startNewGame(playerColor) {
   State.playerColor = playerColor || 'w';
   State.flipped = (playerColor === 'b');
 
+  // Set player names from auth session
+  const user = Auth.current();
+  const displayName = user ? user.username : 'Player';
+  if (State.mode === 'computer') {
+    State.names[playerColor] = displayName;
+    State.names[playerColor === 'w' ? 'b' : 'w'] = 'Computer';
+  } else if (State.mode === 'friend') {
+    State.names.w = displayName;
+    State.names.b = 'Opponent';
+  } else {
+    State.names.w = displayName;
+    State.names.b = displayName;
+  }
+  $('name-white').textContent = State.names.w;
+  $('name-black').textContent = State.names.b;
+
   closeModal('modal-gameover');
   closeModal('modal-newgame');
 
@@ -787,13 +803,12 @@ function startNewGame(playerColor) {
     ChessClock.setup(State.timeMin, State.timeInc);
     ChessClock.start('w');
   } else {
-    // Show no clock
     $('time-white').textContent = '∞';
     $('time-black').textContent = '∞';
   }
 
   renderBoard();
-  toast('New game started! ' + (playerColor === 'w' ? '♔' : '♚') + ' Good luck!', 'info', 2500);
+  toast('New game started! ' + (playerColor === 'w' ? '♔' : '♚') + ' Good luck, ' + displayName + '!', 'info', 2500);
 
   // If player is black and vs computer, AI goes first
   if (State.mode === 'computer' && State.playerColor === 'b') {
@@ -864,8 +879,16 @@ function handleVoiceStatus(status) {
   const mic = $('voice-mic');
   const label = $('voice-label');
 
-  if (status === 'listening') {
+  if (status === 'always-on') {
+    // Continuous mode — stays on
     btn.classList.add('listening');
+    btn.classList.add('always-on');
+    mic.classList.add('listening');
+    mic.textContent = '🟢';
+    label.textContent = 'Listening (hands-free)…';
+  } else if (status === 'listening') {
+    btn.classList.add('listening');
+    btn.classList.remove('always-on');
     mic.classList.add('listening');
     mic.textContent = '🔴';
     label.textContent = 'Listening…';
@@ -874,7 +897,8 @@ function handleVoiceStatus(status) {
     const h = status.replace('heard:', '');
     $('voice-heard').textContent = h ? `"${h}"` : '';
   } else {
-    btn.classList.remove('listening');
+    // idle
+    btn.classList.remove('listening', 'always-on');
     mic.classList.remove('listening');
     mic.textContent = '🎤';
     label.textContent = 'Click to Speak';
@@ -1081,13 +1105,18 @@ function wireEvents() {
   // AI difficulty
   $('ai-level').addEventListener('input', e => applyAILevel(e.target.value));
 
-  // Voice button
+  // Voice button — toggles always-on continuous listening mode
   $('btn-voice').addEventListener('click', () => {
     if (!VoiceEngine.isSupported()) {
       toast('Voice commands not supported in this browser. Try Chrome.', 'error');
       return;
     }
-    VoiceEngine.toggle();
+    const on = VoiceEngine.toggleAlwaysOn();
+    if (on) {
+      toast('🎤 Hands-free voice ON — speak your moves!', 'success', 2500);
+    } else {
+      toast('Voice commands off.', 'info', 1500);
+    }
   });
 
   // Settings toggles
@@ -1299,23 +1328,23 @@ function showLandingPage() {
 
       <!-- Mode cards -->
       <div class="lp-modes">
-        <button class="lp-mode-card" id="lp-vs-ai" data-mode="computer">
+        <button class="lp-mode-card${!user2 ? ' lp-mode-locked' : ''}" id="lp-vs-ai" data-mode="computer">
           <div class="lp-mode-icon">🤖</div>
           <div class="lp-mode-title">vs Computer</div>
           <div class="lp-mode-desc">Challenge our AI from Beginner to Master level</div>
         </button>
-        <button class="lp-mode-card lp-mode-featured" id="lp-vs-online" data-mode="online">
+        <button class="lp-mode-card lp-mode-featured${!user2 ? ' lp-mode-locked' : ''}" id="lp-vs-online" data-mode="online">
           <div class="lp-mode-badge">LIVE</div>
           <div class="lp-mode-icon">🌐</div>
           <div class="lp-mode-title">Play Online</div>
           <div class="lp-mode-desc">Challenge a friend in real-time with a room code</div>
         </button>
-        <button class="lp-mode-card" id="lp-vs-friend" data-mode="friend">
+        <button class="lp-mode-card${!user2 ? ' lp-mode-locked' : ''}" id="lp-vs-friend" data-mode="friend">
           <div class="lp-mode-icon">👥</div>
-          <div class="lp-mode-title">Pass & Play</div>
+          <div class="lp-mode-title">Pass &amp; Play</div>
           <div class="lp-mode-desc">Two players on the same device, face to face</div>
         </button>
-        <button class="lp-mode-card" id="lp-analysis" data-mode="analysis">
+        <button class="lp-mode-card${!user2 ? ' lp-mode-locked' : ''}" id="lp-analysis" data-mode="analysis">
           <div class="lp-mode-icon">🔍</div>
           <div class="lp-mode-title">Analysis</div>
           <div class="lp-mode-desc">Free-move board to study openings and positions</div>
@@ -1332,8 +1361,9 @@ function showLandingPage() {
         <div class="lp-stat"><span class="lp-stat-val">🎤</span><span class="lp-stat-label">Voice Moves</span></div>
       </div>
 
-      ${!user2 ? `<p class="lp-footer-note">👆 Select a mode to play as guest, or <button class="lp-inline-link" id="lp-guest-signin">sign in</button> to track your progress</p>` :
-                 `<p class="lp-footer-note">Select a game mode above to start playing</p>`}
+      ${!user2 ?
+        `<p class="lp-footer-note lp-footer-auth">🔐 <strong style="color:var(--purple-light)">Account required to play.</strong>&nbsp; <button class="lp-inline-link" id="lp-guest-signin">Sign in</button> or <button class="lp-inline-link" id="lp-guest-register">create a free account</button> to get started.</p>` :
+        `<p class="lp-footer-note">Select a game mode above to start playing 👆</p>`}
     </div>
 
     <!-- Auth Modals inside landing page -->
@@ -1388,21 +1418,35 @@ function showLandingPage() {
     </div>
   `;
 
-  // Wire mode cards
+  // Wire mode cards — require auth before entering any game mode
   $('landing-page').querySelectorAll('.lp-mode-card').forEach(card => {
-    card.addEventListener('click', () => hideLandingPage(card.dataset.mode));
+    card.addEventListener('click', () => {
+      const loggedIn = Auth.current();
+      if (!loggedIn) {
+        // Store the pending mode so we can auto-launch after auth
+        window._pendingMode = card.dataset.mode;
+        showAuthModal('register');
+        // Update the modal sub-text to explain why
+        const sub = $('lp-modal-register') && $('lp-modal-register').querySelector('.lp-modal-sub');
+        if (sub) sub.textContent = 'Create a free account to start playing!';
+        return;
+      }
+      hideLandingPage(card.dataset.mode);
+    });
   });
 
   // Auth button wiring
-  const btnSignIn   = $('lp-btn-signin');
-  const btnRegister = $('lp-btn-register');
-  const btnLogout   = $('lp-btn-logout');
-  const guestLink   = $('lp-guest-signin');
+  const btnSignIn      = $('lp-btn-signin');
+  const btnRegister    = $('lp-btn-register');
+  const btnLogout      = $('lp-btn-logout');
+  const guestLink      = $('lp-guest-signin');
+  const guestRegLink   = $('lp-guest-register');
 
-  if (btnSignIn)   btnSignIn.addEventListener('click', () => showAuthModal('signin'));
-  if (btnRegister) btnRegister.addEventListener('click', () => showAuthModal('register'));
-  if (btnLogout)   btnLogout.addEventListener('click', () => { Auth.logout(); showLandingPage(); toast('Signed out.', 'info', 1500); });
-  if (guestLink)   guestLink.addEventListener('click', () => showAuthModal('signin'));
+  if (btnSignIn)     btnSignIn.addEventListener('click', () => showAuthModal('signin'));
+  if (btnRegister)   btnRegister.addEventListener('click', () => showAuthModal('register'));
+  if (btnLogout)     btnLogout.addEventListener('click', () => { Auth.logout(); window._pendingMode = null; showLandingPage(); toast('Signed out.', 'info', 1500); });
+  if (guestLink)     guestLink.addEventListener('click', () => showAuthModal('signin'));
+  if (guestRegLink)  guestRegLink.addEventListener('click', () => showAuthModal('register'));
 
   $('lp-close-signin').addEventListener('click',   () => hideAuthModal('signin'));
   $('lp-close-register').addEventListener('click', () => hideAuthModal('register'));
@@ -1425,8 +1469,14 @@ function showLandingPage() {
     const res = Auth.login(username, password);
     if (!res.ok) { $('si-error').textContent = res.msg; return; }
     hideAuthModal('signin');
-    showLandingPage();
     toast(`Welcome back, ${res.user.username}! ♟`, 'success', 2500);
+    const pending = window._pendingMode;
+    window._pendingMode = null;
+    if (pending) {
+      setTimeout(() => hideLandingPage(pending), 150);
+    } else {
+      showLandingPage();
+    }
   });
 
   $('lp-do-register').addEventListener('click', () => {
@@ -1435,8 +1485,14 @@ function showLandingPage() {
     const res = Auth.register(username, password);
     if (!res.ok) { $('reg-error').textContent = res.msg; return; }
     hideAuthModal('register');
-    showLandingPage();
     toast(`Account created! Welcome, ${res.user.username}! 🎉`, 'success', 3000);
+    const pending = window._pendingMode;
+    window._pendingMode = null;
+    if (pending) {
+      setTimeout(() => hideLandingPage(pending), 150);
+    } else {
+      showLandingPage();
+    }
   });
 
   // Enter key submit
