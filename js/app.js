@@ -1017,6 +1017,48 @@ function applyAILevel(level) {
 }
 
 // ============================================================
+// MODAL ACTIONS
+// ============================================================
+function doResign() {
+  if (State.gameOver) return;
+  const loser = State.chess.turn();
+  const winner = loser === 'w' ? 'b' : 'w';
+  State.gameOver = true;
+  ChessClock.stop();
+  const winnerName = State.names[winner];
+  $('go-icon').textContent = '🏳';
+  $('go-title').textContent = `${winnerName} wins!`;
+  $('go-sub').textContent = `${State.names[loser]} resigned`;
+  $('go-stats').innerHTML = buildGameStats();
+  updateStatusBar();
+  if (State.soundOn) SoundEngine.gameOver(false);
+  setTimeout(() => openModal('modal-gameover'), 300);
+}
+
+function doOfferDraw() {
+  if (State.gameOver) return;
+  if (State.mode === 'computer') {
+    toast('The computer declines the draw.', 'info');
+  } else {
+    openModal('modal-draw');
+  }
+}
+
+function doAcceptDraw() {
+  if (State.gameOver) return;
+  closeModal('modal-draw');
+  State.gameOver = true;
+  ChessClock.stop();
+  $('go-icon').textContent = '🤝';
+  $('go-title').textContent = 'Draw!';
+  $('go-sub').textContent = 'By mutual agreement';
+  $('go-stats').innerHTML = buildGameStats();
+  updateStatusBar();
+  if (State.soundOn) SoundEngine.draw();
+  setTimeout(() => openModal('modal-gameover'), 300);
+}
+
+// ============================================================
 // EVENT WIRING
 // ============================================================
 function wireEvents() {
@@ -1191,6 +1233,68 @@ function wireClocks() {
 // ============================================================
 // VOICE SETUP
 // ============================================================
+function handleVoiceStatus(status) {
+  const btn = $('btn-voice');
+  const mic = $('voice-mic');
+  const lbl = $('voice-label');
+  const heard = $('voice-heard');
+
+  if (status === 'listening') {
+    btn.classList.add('listening');
+    mic.classList.add('listening');
+    lbl.textContent = 'Listening...';
+    heard.textContent = '...';
+  } else if (status === 'always-on') {
+    btn.classList.remove('listening');
+    btn.classList.add('always-on');
+    mic.classList.add('listening');
+    lbl.textContent = 'Hands-free Mode ON';
+    heard.textContent = 'Speak a move';
+  } else if (status.startsWith('error:')) {
+    btn.classList.remove('listening', 'always-on');
+    mic.classList.remove('listening');
+    lbl.textContent = 'Error: ' + status.substring(6);
+    setTimeout(() => { if (!VoiceEngine.listening && !VoiceEngine.isAlwaysOn) lbl.textContent = 'Click to Speak'; }, 2000);
+  } else if (status.startsWith('heard:')) {
+    const text = status.substring(6);
+    heard.textContent = text ? '"' + text + '"' : '...';
+  } else {
+    // idle
+    btn.classList.remove('listening', 'always-on');
+    mic.classList.remove('listening');
+    lbl.textContent = 'Click to Speak';
+    heard.textContent = '';
+  }
+}
+
+function handleVoiceResult(transcript, parsed) {
+  if (!parsed) {
+    toast(`Could not understand: "${transcript}"`, 'warning', 2000);
+    return;
+  }
+  
+  if (parsed.action) {
+    if (parsed.action === 'resign') doResign();
+    if (parsed.action === 'draw') doOfferDraw();
+    if (parsed.action === 'acceptDraw') doAcceptDraw();
+    if (parsed.action === 'flip') { State.flipped = !State.flipped; renderBoard(); }
+    if (parsed.action === 'undo' && State.mode === 'online') { Multiplayer.requestTakeback(); }
+    return;
+  }
+
+  if (parsed.move) {
+    // Try to execute the move
+    const result = State.chess.move(parsed.move);
+    if (!result) {
+      toast(`Invalid move: ${parsed.move}`, 'error');
+      if (State.soundOn) SoundEngine.illegal();
+    } else {
+      State.chess.undo(); // rewind to use tryMove so UI/network handles it properly
+      tryMove(result.from, result.to, result.promotion);
+    }
+  }
+}
+
 function wireVoice() {
   VoiceEngine.onResult(handleVoiceResult);
   VoiceEngine.onStatus(handleVoiceStatus);
@@ -1855,18 +1959,18 @@ function wireOnlineMode() {
   });
 
   // Intercept board controls for online mode
-  $('btn-resign').addEventListener('click', () => {
+  $('btn-resign')?.addEventListener('click', () => {
     if (State.mode !== 'online' || State.gameOver) return;
     if (confirm('Resign this game?')) Multiplayer.sendResign();
   }, true);
 
-  $('btn-draw').addEventListener('click', () => {
+  $('btn-draw')?.addEventListener('click', () => {
     if (State.mode !== 'online' || State.gameOver) return;
     Multiplayer.sendDrawOffer();
     toast('Draw offer sent!', 'info', 2000);
   }, true);
 
-  $('btn-undo').addEventListener('click', () => {
+  $('btn-undo')?.addEventListener('click', () => {
     if (State.mode !== 'online') return;
     Multiplayer.requestTakeback();
     toast('Takeback requested…', 'info', 2000);
